@@ -231,6 +231,27 @@ After the Maaintanence Plan has successfully been created, it can be verified by
 ---
 
 ### 4. Disaster Recovery Simulation
+Intentionally mimicking an event causing data loss/corruption will give firsthand experience in the procedure used to recover this data.
+
+The first step is to remove critical data from the production database to simulate a scenario where data is compromised. For this project, the following SQL queries were executed:
+
+```sql
+DROP TABLE IF EXISTS Person.Password;
+
+DROP TABLE IF EXISTS HumanResources.JobCandidate;
+
+TRUNCATE TABLE HumanResources.EmployeePayHistory;
+```
+
+These queries deleted two tables and removed all the data from the third.
+
+The recovery process involves using an Azure SQL Database Backup. This is done by navigating to the database resource page on Azure and clicking **Restore**. From here, the database can be restored from a source database, which requires selecting a point in time to restore from. This should be the latest time before the data loss occurred in order to minimise loss of up-to-date production data, however in this case since it is not an active database, a the restore point was chosen as a approximately a day before the data loss event. A new database name can then be chosen.
+
+![](images/Step4/disaster_recovery_summary.png)
+
+The newly restored database should be examined to ensure that the previously deleted data is accessible again. For this project, the `Person.Password`, `HumanResources.JobCandidate`, and `HumanResource.EmployeePayHistory` tables were all found and contained all the correct data.
+
+---
 
 ### 5. Geo-Replication and Failover
 
