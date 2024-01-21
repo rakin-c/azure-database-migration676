@@ -19,6 +19,11 @@ This project is part of the AiCore Cloud Engineering Bootcamp.
 
 Tools used: Microsoft Azure (VMs, SQL Database, Blob Storage, Database Migration Service), Microsoft SQL Server, SQL Server Management Studio, Azure Data Studio, Microsoft Entra ID.
 
+## Project Architecture
+![](images/azure_project_uml_diagram.png)
+
+Above is the UML diagram for the architecture of the project, showing how each resource and part of the project is related to the others.
+
 ## Steps Taken
 1. [Production Environment Setup](#1-production-environment-setup)
     - [Virtual Machine Setup](#virtual-machine-setup)
@@ -28,6 +33,9 @@ Tools used: Microsoft Azure (VMs, SQL Database, Blob Storage, Database Migration
     - [Schema Migration](#schema-migration)
     - [Data Migration](#data-migration)
 3. [Data Backup and Restoration](#3-data-backup-and-restoration)
+    - [Database Backup to Blob Storage](#database-backup-to-blob-storage)
+    - [Database Restoration to Development VM](#database-restoration-to-development-vm)
+    - [Backup Automation](#backup-automation)
 4. [Disaster Recovery Simulation](#4-disaster-recovery-simulation)
 5. [Geo-Replication and Failover](#5-geo-replication-and-failover)
 6. [Microsoft Entra ID Integration](#6-microsoft-entra-id-integration)
@@ -157,11 +165,70 @@ This will open up the migration wizard:
 
 Once migration is complete, the data can be checked using the pre-established connection to the Azure database on Azure Data Studio.
 
-At this point the database migration is complete.
+At this point the database migration is complete!
 
 ---
 
 ### 3. Data Backup and Restoration
+The database should be backed up in the event that the data needs to be restored to a previous state. This could be due to data loss or corruption, or other unforeseen issues.
+
+#### Database Backup to Blob Storage
+The **Back Up Database** window can be found by right clicking on the database in the object explorer then navigating to **Tasks -> Back Up...** in the right click menu. Here the source, backup type, and destination for the file can be chosen. For this project, a full backup was created. The destination folder was set as `C:\Program Files\Microsoft SQL Server\MSSQL16.MSSQLSERVER\MSSQL\Backup`, the same folder from which the database was restored.
+
+!["Back Up Database" window where source, backup type (full), and destination folder is chosen.](images/Step3/db_backup.png)
+
+The next step is to upload this backup file to an Azure Blob Storage account, which provides an additional layer of safety and redundancy. Creating a Storage account can be done from the Azure portal, making sure that it is located in UK South. The basic settings for the account are shown below.
+
+![](images/Step3/storage_summary.png)
+
+Once this is created, a container can be created within the account and the backup file created earlier can be uploaded to create a copy in the cloud.
+
+---
+
+#### Database Restoration to Development VM
+Creating a development environment for data allows testing and experimentation on the database without affecting live data in the production database and anything that might rely on it.
+
+A development database was created inside another virtual machine, using the exact same setting as the ones used to create the production VM [above](#virtual-machine-setup). The same [process](#creating-the-production-database) of installing SQL Server, SMSS, and Azure Data Studio should be followed.
+
+Downloading the backup file previously uploaded to Azure Blob Storage on the virtual machine will allow the database to be restored from it. This file must be moved or copied to `C:\Program Files\Microsoft SQL Server\MSSQL16.MSSQLSERVER\MSSQL\Backup` as was done to create the production database. By right clicking the **Databases** node in the object explorer, the **Restore Database** window will allow restoration from the backup file.
+
+![](images/Step3/adventureworks_backup_restore.png)
+
+---
+
+#### Backup Automation
+Creating regular backups helps to restore the database to the latest version, protecting recent changes and allowing for easy and efficient data recovery. This can be done by creating a Maintanence Plan in SMSS.
+
+Firstly, an SQL Server Credential must be created in order to allow SQL Server to access the Blob Storage. The following T-SQL query can be executed by right clicking on the server name in SMSS and clicking **New Query**:
+
+```sql
+CREATE CREDENTIAL [CredentialName]
+WITH IDENTITY = '[Azure Storage Account Name]',
+SECRET = 'Access Key';  
+```
+
+`CredentialName` should be replaced with a descriptive name for the credential (**"rakinstorage_credentials"** was used for this project), and `Azure Storage Acount Name` should be replaced with the name of the Storage Account (in this case **"rakinstorage"**).
+
+The `Access Key` can be found on the Storage Account resource in Azure by navigating to the **Security + networking -> Access keys** page. One of these access keys should be used when executing the above query.
+
+![](images/Step3/storage_access_keys.png)
+
+After this query is executed, the credential should be visible in the object explorer under the **Security -> Credentials** node.
+
+In order to create a Maintenance Plan, the SQL Server Agent must first be started by right clicking its node in the object explorer and clicking **Start**. Then, right clicking on **Maintanence Plans** (under the **Management** node) and selecting **Maintanence Plan Wizard** will allow backups to be scheduled.
+
+In the **Maintanence Plan Wizard** a name for the plan, and a schedule, can be chosen. For this project, the plan (**"WeeklyBackup"**) was scheduled to be performed every Wednesday at midnight, without an end date, starting from the 3rd of January.
+
+![](images/Step3/backup_schedule.png)
+
+**Back Up Database (Full)** should be selected, and in the next window the database and destination can be chosen. Under the **Destination** tab the correct SQL credential should be chosen, and the Azure storage container and URL prefix can be found on the container resource page on Azure.
+
+![](images/Step3/configure_backup_destination.png)
+![](images/Step3/maintenance_plan_success.png)
+
+After the Maaintanence Plan has successfully been created, it can be verified by checking the Storage Account to see if the backup file has been uploaded correctly.
+
+---
 
 ### 4. Disaster Recovery Simulation
 
