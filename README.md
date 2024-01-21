@@ -289,3 +289,29 @@ Clicking **Failover** again will perform a failback, and restore the servers to 
 ---
 
 ### 6. Microsoft Entra ID Integration
+Integrating Microsoft Entra ID into Azure SQL database allows refined control over who can access the data. This enhances security and prevents unauthorised data access or manipulation. For this project, a database reader account was created, giving read-only access to the database.
+
+First, the Microsoft Entra Admin must be set by navigating to the **Microsoft Entra** page of the primary server resource on Azure and clicking **Set admin**. From here, the admin user can be selected. This should be tested by connecting to the server in Azure Data Studio using the **Microsoft Entra ID** authentication type.
+
+A database reader can be created by going to the **Microsoft Entra ID** page on Azure and clicking on **New user -> Create new user**. At this point, the user name and password can be set. In this instance the user name was set as **"Rakin_DB_reader"**.
+
+![](images/Step6/db_reader_account.png)
+
+After this is done, the following SQL query should be executed in Azure Data Studio, making sure that the server is connected to using Microsoft Entra ID authentication:
+
+```sql
+CREATE USER [DB_Reader@domain.com] FROM EXTERNAL PROVIDER;
+ALTER ROLE db_datareader ADD MEMBER [DB_Reader@domain.com];
+```
+
+The account name in brackets should be replaced with the user principal name that has just been created.
+
+![](images/Step6/add_reader_query.png)
+
+This should be verified by logging into the server using the Microsoft Entra ID login details of the database reader user. This account should be able to view all the data in the database, but an error should be returned if there is an attempt to alter any data, as shown below.
+
+![](images/Step6/read_only_verification.png)
+
+Once this is done the project is complete.
+
+---
