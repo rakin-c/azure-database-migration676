@@ -38,6 +38,8 @@ Above is the UML diagram for the architecture of the project, showing how each r
     - [Backup Automation](#backup-automation)
 4. [Disaster Recovery Simulation](#4-disaster-recovery-simulation)
 5. [Geo-Replication and Failover](#5-geo-replication-and-failover)
+    - [Geo-Replication](#geo-replication)
+    - [Failover and Failback](#failover-and-failback)
 6. [Microsoft Entra ID Integration](#6-microsoft-entra-id-integration)
 
 ---
@@ -254,5 +256,36 @@ The newly restored database should be examined to ensure that the previously del
 ---
 
 ### 5. Geo-Replication and Failover
+Geo-replication creates a synchronised copy of the database in a different geographical region, which ensures that downtime is minimised in the event of planned maintanence or unforeseen cirumstances.
+
+#### Geo-Replication
+A geo-replica of the desired production database on Azure can be created by navigating to the database resource page and selecting the **Replicas** page. After clicking on **Create replica**, a new server will have to be provisionsed. This server should be located in a region geographically distant to the first in order to ensure redundancy. For this project, the database was named **db-migration-server-2** in **East US**.
+
+![](images/Step5/georeplica_summary.png)
+
+After this is created, Azure will synchronise data between the two databases.
+
+---
+
+#### Failover and Failback
+A failover involves switching the workload from the primary database to a secondary geo-replica of the database in the event of maintanence or disaster.
+
+In order to execute a failover, a failover group must first be created. One can be made on the Azure page of the server of the primary database, by navigating to the **Failover groups** page on the sidebar and clicking **Add group**. During setup a group name should be entered and the **Server** chosen should be the secondary server.
+
+Once this is complete, navigating to the failover group resource page should show the map below.
+
+![](images/Step5/failover_group.png)
+
+To initiate a failover, the **Failover** button can be clicked. This will come up with a warning about switching the secondary database to the primary role, to which **Yes** should be selected.
+
+After this is completed, the page should show that the second server is now the primary, and the first is now the secondary.
+
+![](images/Step5/failover_success.png)
+
+Clicking **Failover** again will perform a failback, and restore the servers to their original roles.
+
+![](images/Step5/failback_success.png)
+
+---
 
 ### 6. Microsoft Entra ID Integration
